@@ -1,0 +1,416 @@
+# scUTRquant APA Pipeline — Pineda Dataset (Test Run)
+
+## Overview
+
+This document describes a full end-to-end workflow for running **alternative polyadenylation (APA)** analysis using **scUTRquant** on single-cell RNA-seq data from the Pineda dataset on the Minerva HPC cluster.
+
+This pipeline includes:
+
+1. Data access and setup on HPC
+2. scUTRquant execution (Snakemake-based)
+3. Generation of SingleCellExperiment (SCE) objects
+4. Metadata integration
+5. Pseudobulk aggregation
+6. Differential transcript usage (DTU) analysis
+7. Visualization (volcano plots)
+
+This is a **test run** using publicly available data to validate the pipeline prior to application on in-house datasets.
+
+---
+
+## 1. HPC Login
+
+```bash
+ssh minerva
+```
+
+Authenticate using password + MFA.
+
+---
+
+## 2. Navigate to Dataset
+
+```bash
+cd /sc/arion/projects/als-omics/FTD_sc_meta/Pineda_scRNAseq/STARsolo
+ls
+```
+
+Each directory corresponds to one sample:
+
+```
+GSM5292143/
+GSM5292144/
+...
+```
+
+Each contains:
+
+```
+GSM5292143.Aligned.sortedByCoord.out.bam
+```
+
+---
+
+## 3. Create Working Directory
+
+```bash
+cd /sc/arion/work/stronj04
+mkdir pineda_apa_test
+cd pineda_apa_test
+```
+
+---
+
+## 4. Build Sample Sheet
+
+```bash
+echo "sample_id,file_type,files" > sample_sheet.csv
+
+for d in /sc/arion/projects/als-omics/FTD_sc_meta/Pineda_scRNAseq/STARsolo/GSM*; do
+  sample=$(basename $d)
+  echo "$sample,bam,$d/$sample.Aligned.sortedByCoord.out.bam" >> sample_sheet.csv
+done
+
+head sample_sheet.csv
+```
+
+---
+
+## 5. Create Config File
+
+```bash
+nano config.yaml
+```
+
+```yaml
+dataset_name: pineda_full_run
+
+sample_file: /sc/arion/work/stronj04/pineda_apa_test/sample_sheet.csv
+
+output_type:
+  - txs
+  - genes
+
+target: utrome_hg38_v1
+tech: 10XV3
+strand: "--fr-stranded"
+min_umis: 500
+```
+
+---
+
+## 6. Clone scUTRquant
+
+```bash
+git clone https://github.com/Mayrlab/scUTRquant.git
+cd scUTRquant
+```
+
+---
+
+## 7. Conda Environment (Working Version)
+
+```bash
+conda create -n scutr_smk \
+  -c conda-forge -c bioconda \
+  python=3.10 \
+  snakemake=7.32.4 \
+  pandas \
+  numpy \
+  "pulp<2.8" \
+  --strict-channel-priority -y
+
+conda activate scutr_smk
+```
+
+Verify:
+
+```bash
+snakemake --version
+python -c "import pulp; print(pulp.__version__)"
+```
+
+---
+
+## 8. Test Run (Single Sample)
+
+Create test sample sheet:
+
+```bash
+nano sample_sheet_test.csv
+```
+
+```
+sample_id,file_type,files
+GSM5292143,bam,/sc/arion/projects/als-omics/FTD_sc_meta/Pineda_scRNAseq/STARsolo/GSM5292143/GSM5292143.Aligned.sortedByCoord.out.bam
+```
+
+Create config:
+
+```bash
+nano config_test.yaml
+```
+
+Set threads:
+
+```bash
+export OPENBLAS_NUM_THREADS=1
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+```
+
+Run:
+
+```bash
+snakemake --use-conda --configfile config_test.yaml --cores 4
+```
+
+---
+
+## 9. Verify Test Output
+
+```bash
+cd data/sce/utrome_hg38_v1
+ls -lh
+```
+
+In R:
+
+```r
+library(SingleCellExperiment)
+
+sce <- readRDS("pineda_test_one_sample.txs.Rds")
+dim(sce)
+class(sce)
+```
+
+---
+
+## 10. Full Run Script
+
+```bash
+nano run_full.sh
+```
+
+```bash
+#!/bin/bash
+
+source /hpc/users/stronj04/miniconda3/etc/profile.d/conda.sh
+conda activate scutr_smk
+
+export OPENBLAS_NUM_THREADS=1
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+
+cd /sc/arion/work/stronj04/pineda_apa_test/scUTRquant
+
+snakemake --use-conda \
+          --conda-frontend conda \
+          --configfile /sc/arion/work/stronj04/pineda_apa_test/config.yaml \
+          --cores 8 \
+          --printshellcmds
+```
+
+```bash
+chmod +x run_full.sh
+```
+
+---
+
+## 11. Submit Job
+
+```bash
+bsub -P acc_als-omics \
+     -q premium \
+     -n 8 \
+     -W 24:00 \
+     -R "span[hosts=1] rusage[mem=64000]" \
+     -o pineda_full.out \
+     -e pineda_full.err \
+     ./run_full.sh
+```
+
+---
+
+## 12. Monitor Job
+
+```bash
+bjobs
+tail -f pineda_full.out
+```
+
+---
+
+## 13. Output Location
+
+```
+/sc/arion/work/stronj04/pineda_apa_test/scUTRquant/data/sce/utrome_hg38_v1
+```
+
+Outputs:
+
+```
+pineda_full_run.txs.Rds
+pineda_full_run.genes.Rds
+```
+
+---
+
+## 14. Verify Completion
+
+```bash
+tail -n 40 pineda_full.out
+```
+
+Look for:
+
+```
+533 of 533 steps (100%) done
+Finished jobid: 0 (Rule: all)
+```
+
+---
+
+## 15–20. Metadata Integration
+
+```r
+library(SingleCellExperiment)
+library(S4Vectors)
+
+sce <- readRDS("pineda_full_run.txs.Rds")
+
+meta <- read.csv("cell-annotations-63samples.csv", stringsAsFactors = FALSE)
+
+meta$cell_id <- paste(meta$sample_id, meta$barcode, sep = "_")
+
+keep <- intersect(colnames(sce), meta$cell_id)
+sce <- sce[, keep]
+
+meta_matched <- meta[match(keep, meta$cell_id), ]
+stopifnot(all(colnames(sce) == meta_matched$cell_id))
+
+colData(sce) <- cbind(
+  colData(sce),
+  DataFrame(meta_matched[, setdiff(names(meta_matched), "cell_id")])
+)
+
+saveRDS(sce, "pineda_full_run.txs.annotated.rds")
+```
+
+---
+
+## 21. Disease Collapsing (Critical)
+
+```r
+library(dplyr)
+
+sce$disease <- case_when(
+  sce$disease_group == "Control" ~ "Control",
+  sce$disease_group %in% c("sALS","c9ALS") ~ "ALS",
+  sce$disease_group %in% c("sFTLD","c9FTLD") ~ "FTLD"
+)
+
+table(sce$disease, sce$disease_group)
+```
+
+---
+
+## 22. Pseudobulk Aggregation
+
+### Full dataset
+
+```r
+library(scuttle)
+
+pb <- aggregateAcrossCells(
+  sce,
+  ids = sce$sample_id,
+  use.assay.type = "counts"
+)
+```
+
+### Microglia-only
+
+```r
+sce_mg <- sce[, sce$cell_type == "microglia"]
+
+pb_mg <- aggregateAcrossCells(
+  sce_mg,
+  ids = sce_mg$sample_id,
+  use.assay.type = "counts"
+)
+```
+
+---
+
+## 23. Model Design
+
+```r
+design <- model.matrix(~ 0 + disease + sex, data = colData(pb_mg))
+colnames(design)
+```
+
+---
+
+## 24. DTU Analysis
+
+Comparisons performed:
+
+* ALS vs Control
+* FTLD vs Control
+* ALS vs FTLD
+
+Covariate:
+
+* sex
+
+Output files:
+
+```
+*_vs_*_dtu_results.csv
+combined_dtu_results.csv
+combined_significant_dtu_hits.csv
+```
+
+---
+
+## 25. Results Summary
+
+* No UTRs passed FDR < 0.05
+* Best FDR ~0.22–0.23
+* Consistent effect sizes observed
+* Signal patterns:
+
+  * Full dataset: FTLD-driven
+  * Microglia: ALS + FTLD
+
+---
+
+## 26. Volcano Plot (Microglia DTU)
+
+```r
+library(ggplot2)
+library(ggrepel)
+
+mg_res <- read.csv("ALS_vs_Control_dtu_results.csv")
+
+top_genes <- mg_res %>%
+  arrange(empirical_FDR) %>%
+  head(10)
+
+ggplot(mg_res, aes(x = log2FC, y = -log10(empirical_FDR))) +
+  geom_point(alpha = 0.5) +
+  geom_text_repel(data = top_genes, aes(label = gene_name)) +
+  theme_classic()
+```
+
+---
+
+## Notes
+
+* This pipeline was ran on this test dataset prior to use on in-house data.
+* Downstream analyses may vary depending on biological question (e.g., microglia-specific APA in PD).
+* No filtering thresholds beyond `min_umis = 500` were applied at the scUTRquant stage.
+* Sex was included as a covariate in all DTU models.
+
+---
