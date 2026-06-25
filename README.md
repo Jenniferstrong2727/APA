@@ -4,13 +4,17 @@ Alternate Polyadenylation analysis repository
 (WIP - not done yet - eventual layout)
 
 ```
+
 APA/
-├── scripts/
-│   └── APA-test
+├── README.md
 ├── envs/
-│   └── scutr_smk.yml
 ├── configs/
-│   └── config_pineda.yaml
+├── scripts/
+│   ├── prep/
+│   │   └── Bam_prep/
+│   ├── test/
+│   │   └── Pineda_test/
+│   └── pilot/
+│       └── Pilot/
 ├── workflow_notes/
-│   └── troubleshooting.md
-```
+└── docs/
