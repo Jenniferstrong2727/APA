@@ -1,0 +1,10 @@
+name: scutr_smk
+channels:
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+dependencies:
+  - numpy
+  - snakemake
+  - python=3.10
+  - pandas
+prefix: /hpc/users/stronj04/miniconda3/envs/scutr_smk

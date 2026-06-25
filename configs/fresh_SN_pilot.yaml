@@ -1,0 +1,15 @@
+dataset_name: fresh_SN_pilot
+
+sample_file: /sc/arion/projects/ad-omics/Jennifer/APA_MG/sample_sheets/pilot_SN_sample_sheet.csv
+
+output_type:
+  - txs
+  - genes
+
+target: utrome_hg38_v1
+
+tech: 10XV3
+
+strand: "--fr-stranded"
+
+min_umis: 500
