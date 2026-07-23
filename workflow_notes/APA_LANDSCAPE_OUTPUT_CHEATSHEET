@@ -1,0 +1,48 @@
+| Output file                                       | Level      | Information                                                                                                                      | Key metrics/column names                                                                                                    | Priority        |
+| ------------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| **pseudobulk_counts_matrix.rds**                  | Raw matrix | Donor-level pseudobulk UTR count matrix. Mainly used for downstream analyses, not visualization.                                 | UTR counts per donor                                                                                                        | 🟡 Internal     |
+| **donor_summary.csv**                             | Donor      | Sequencing depth and complexity for each donor/sample. Good QC.                                                                  | `n_cells`, `total_umis_from_cells`, `median_umis_per_cell`, `mean_umis_per_cell`, `donor_total_umis`, `donor_detected_utrs` | ⭐⭐ QC           |
+| **overall_summary.csv**                           | Dataset    | High-level summary of the entire APA landscape. This is your main summary file.                                                  | `total_detected_utrs`, `total_valid_utrs`, `genes_with_ge2_valid_and_ge2_ge10pct`, `median_usage_frac`, etc.                | ⭐⭐⭐             |
+| **feature_flag_summary.csv**                      | Dataset    | Counts of reference annotations/flags. Mostly reference QC.                                                                      | `is_blacklisted`, `is_ipa`, `is_consistent`, `is_distal`, `is_lu`                                                           | ⭐ Mostly QC     |
+| **gene_summary_all.csv**                          | Gene       | Summary statistics for every gene. Probably the most useful table for downstream exploration.                                    | `n_utrs`, `n_valid_utrs`, `gene_total_counts`, `n_utrs_ge10pct_valid`, `max_usage_frac`                                     | ⭐⭐⭐             |
+| **utr_summary_all.csv**                           | UTR        | Every detected UTR regardless of filtering.                                                                                      | `total_counts`, `usage_frac`, `usage_bin`, `donors_detected`                                                                | ⭐⭐              |
+| **isoform_distribution_all.csv**                  | Dataset    | Distribution of total annotated UTRs per gene. Includes blacklisted/IPA.                                                         | `n_utrs`, `n_genes`                                                                                                         | ⭐               |
+| **isoform_distribution_valid.csv**                | Dataset    | Distribution of valid APA isoforms per gene after filtering. Much more biologically meaningful.                                  | `n_valid_utrs`, `n_genes`                                                                                                   | ⭐⭐⭐             |
+| **usage_bin_summary_all.csv**                     | Dataset    | Usage-frequency distribution of all UTRs.                                                                                        | `<1%`, `1–5%`, `5–10%`, etc.                                                                                                | ⭐               |
+| **usage_bin_summary_valid.csv**                   | Dataset    | Distribution of valid APA site usage. Shows whether retained APA sites are dominant or minor.                                    | `usage_bin`, `n_utrs`                                                                                                       | ⭐⭐⭐             |
+| **gene_candidates_all_ge2isoforms.csv**           | Gene       | Genes with at least two detected UTRs (no filtering).                                                                            | All genes with `n_utrs ≥2`                                                                                                  | ⭐⭐              |
+| **gene_candidates_valid_ge2isoforms_ge10pct.csv** | Gene       | Genes passing your APA criteria (≥2 valid UTRs AND ≥2 isoforms ≥10% usage). This is arguably your most important candidate list. | `n_valid_utrs`, `n_utrs_ge10pct_valid`, `gene_total_counts`                                                                 | ⭐⭐⭐⭐            |
+| **gene_summary_blacklisted.csv**                  | Gene       | Genes containing blacklisted UTRs. Mostly for troubleshooting.                                                                   | `n_blacklisted_utrs`                                                                                                        | 🔵 QC only      |
+| **gene_summary_ipa.csv**                          | Gene       | Genes containing intronic polyA sites. Useful if studying IPA specifically.                                                      | `n_ipa_utrs`                                                                                                                | 🔵 QC/Reference |
+| **utr_summary_valid.csv**                         | UTR        | Every retained valid APA site. This is probably the table you'll use most often.                                                 | `usage_frac`, `total_counts`, `utr_position`, `donors_detected`                                                             | ⭐⭐⭐⭐            |
+| **utr_summary_blacklisted.csv**                   | UTR        | Filtered-out blacklisted UTRs.                                                                                                   | Same as above                                                                                                               | 🔵 QC only      |
+| **utr_summary_ipa.csv**                           | UTR        | Intronic polyA sites only.                                                                                                       | Same as above                                                                                                               | 🔵 QC only      |
+| **top_apa_genes_all.csv**                         | Gene       | Top APA genes before filtering.                                                                                                  | Ranked by counts + isoforms                                                                                                 | ⭐⭐              |
+| **top_apa_genes_valid.csv**                       | Gene       | Top biologically supported APA genes after filtering. Probably your main "candidate gene" table.                                 | Ranked by `gene_total_counts`, `n_utrs_ge10pct_valid`, `max_usage_frac`                                                     | ⭐⭐⭐⭐            |
+| **top_blacklisted_genes.csv**                     | Gene       | Top genes containing blacklisted UTRs. Mainly troubleshooting.                                                                   | Same as above                                                                                                               | 🔵 QC           |
+| **top_ipa_genes.csv**                             | Gene       | Top genes with IPA events. Only important if you're interested in intronic polyadenylation.                                      | Same as above                                                                                                               | 🔵 QC/IPA       |
+
+
+
+🟢 Dataset-level summaries
+donor_summary.csv
+overall_summary.csv
+isoform_distribution_valid.csv
+usage_bin_summary_valid.csv
+
+🟢 Gene-level biology
+gene_summary_all.csv
+gene_candidates_valid_ge2isoforms_ge10pct.csv
+top_apa_genes_valid.csv
+These identify which genes exhibit robust APA.
+🟢 UTR-level biology
+utr_summary_valid.csv
+
+🔵 QC / filtering
+feature_flag_summary.csv
+gene_summary_blacklisted.csv
+gene_summary_ipa.csv
+utr_summary_blacklisted.csv
+utr_summary_ipa.csv
+top_blacklisted_genes.csv
+top_ipa_genes.csv
